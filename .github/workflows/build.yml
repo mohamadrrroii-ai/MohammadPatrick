@@ -6,6 +6,7 @@ on:
   push:
     paths:
       - 'MohammadPatrick-source (1).zip'
+      - 'MohammadPatrick-source-fixed.zip'
       - '.github/workflows/build.yml'
 
 jobs:
@@ -17,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -27,8 +28,28 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract project
-        run: unzip -q 'MohammadPatrick-source (1).zip' -d source
+      - name: Extract fixed project
+        run: |
+          if [ -f "MohammadPatrick-source-fixed.zip" ]; then
+            unzip -q "MohammadPatrick-source-fixed.zip" -d source
+          elif [ -f "MohammadPatrick-source (1).zip" ]; then
+            unzip -q "MohammadPatrick-source (1).zip" -d source
+          else
+            echo "Project ZIP not found"
+            exit 1
+          fi
+
+      - name: Fix Java JVM target
+        run: |
+          FILE="source/MohammadPatrick/app/build.gradle.kts"
+          if [ ! -f "$FILE" ]; then
+            echo "Cannot find $FILE"
+            find source -name build.gradle.kts
+            exit 1
+          fi
+          sed -i 's/VERSION_1_8/VERSION_17/g' "$FILE"
+          echo "Updated Java target settings:"
+          grep -n -E 'VERSION_|jvmTarget|compileOptions|kotlinOptions' "$FILE" || true
 
       - name: Build APK
         run: gradle -p source/MohammadPatrick assembleDebug
